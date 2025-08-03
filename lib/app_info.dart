@@ -8,6 +8,12 @@ class AppInfo {
   int versionCode;
   BuiltWith builtWith;
   int installedTimestamp;
+  int lastUpdatedTimestamp;
+  int packageSize;
+  String apkPath;
+  int appUid;
+  String dataDir;
+  List<dynamic> splitSourceDirs;
 
   AppInfo({
     required this.name,
@@ -17,6 +23,12 @@ class AppInfo {
     required this.versionCode,
     required this.builtWith,
     required this.installedTimestamp,
+    required this.lastUpdatedTimestamp,
+    required this.packageSize,
+    required this.apkPath,
+    required this.appUid,
+    required this.dataDir,
+    required this.splitSourceDirs,
   });
 
   factory AppInfo.create(dynamic data) {
@@ -28,6 +40,12 @@ class AppInfo {
       versionCode: data["version_code"] ?? 1,
       builtWith: parseBuiltWith(data["built_with"]),
       installedTimestamp: data["installed_timestamp"] ?? 0,
+      lastUpdatedTimestamp: data["update_timestamp"] ?? 0,
+      packageSize: data["package_size"] ?? 0,
+      apkPath: data["apk_path"] ?? "",
+      appUid: data["app_uid"] ?? 0,
+      dataDir: data["data_dir"] ?? "",
+      splitSourceDirs: data["split_source_dirs"] ?? [],
     );
   }
 

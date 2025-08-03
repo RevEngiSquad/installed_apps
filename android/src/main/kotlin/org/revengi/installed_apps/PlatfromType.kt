@@ -1,4 +1,4 @@
-package com.sharmadhiraj.installed_apps
+package org.revengi.installed_apps
 enum class PlatformType(val value: String) {
     FLUTTER("flutter"),
     REACT_NATIVE("react_native"),

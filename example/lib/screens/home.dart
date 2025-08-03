@@ -60,8 +60,8 @@ class HomeScreen extends StatelessWidget {
           context,
           "Uninstall app",
           "Uninstall app with package name",
-          () => InstalledApps.uninstallApp(
-              "com.sharmadhiraj.installed_apps_example"),
+          () =>
+              InstalledApps.uninstallApp("org.revengi.installed_apps_example"),
         ),
         _buildListItem(
           context,
@@ -69,7 +69,7 @@ class HomeScreen extends StatelessWidget {
           "Check if app is installed using package name",
           () => CommonUtil.checkIfAppIsInstalled(
             context,
-            "com.sharmadhiraj.installed_apps_example",
+            "org.revengi.installed_apps_example",
           ),
         ),
       ],

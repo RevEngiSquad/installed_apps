@@ -1,4 +1,4 @@
-package com.sharmadhiraj.installed_apps
+package org.revengi.installed_apps
 
 import android.content.Context
 import android.content.pm.ApplicationInfo

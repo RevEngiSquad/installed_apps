@@ -1,10 +1,11 @@
 name: installed_apps
 description: Flutter plugin with utility methods related to installed apps on device.
 version: 1.6.0
-homepage: https://github.com/sharmadhiraj/installed_apps
+homepage: https://github.com/RevEngiSquad/installed_apps.git
+publish_to: "none"
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"
   flutter: ">=1.12.0"
 
 dependencies:
@@ -19,5 +20,5 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.sharmadhiraj.installed_apps
+        package: org.revengi.installed_apps
         pluginClass: InstalledAppsPlugin

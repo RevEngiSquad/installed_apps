@@ -1,4 +1,4 @@
-package com.sharmadhiraj.installed_apps
+package org.revengi.installed_apps
 
 import android.content.Context
 import android.content.Intent
@@ -10,8 +10,8 @@ import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import android.widget.Toast.LENGTH_SHORT
-import com.sharmadhiraj.installed_apps.Util.Companion.convertAppToMap
-import com.sharmadhiraj.installed_apps.Util.Companion.getPackageManager
+import org.revengi.installed_apps.Util.Companion.convertAppToMap
+import org.revengi.installed_apps.Util.Companion.getPackageManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding

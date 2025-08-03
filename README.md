@@ -15,7 +15,7 @@ possible.
 ## Getting Started
 
 1. [Installation Guide](https://pub.dev/packages/installed_apps/install)
-2. [Example Project](https://github.com/sharmadhiraj/installed_apps/tree/master/example)
+2. [Example Project](https://github.org/revengi/installed_apps/tree/master/example)
 
 ## Usage
 

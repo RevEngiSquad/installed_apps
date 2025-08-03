@@ -1,4 +1,4 @@
-package com.sharmadhiraj.installed_apps
+package org.revengi.installed_apps
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.P
+import android.os.Build.VERSION_CODES.LOLLIPOP
 import java.io.File
 
 class Util {
@@ -25,8 +26,16 @@ class Util {
             val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
             map["version_name"] = packageInfo.versionName
             map["version_code"] = getVersionCode(packageInfo)
-            map["built_with"] = platformType?.value ?: BuiltWithUtil.getPlatform(packageInfo.applicationInfo)
-            map["installed_timestamp"] = File(packageInfo.applicationInfo.sourceDir).lastModified()
+            map["built_with"] = platformType?.value ?: BuiltWithUtil.getPlatform(app)
+            map["installed_timestamp"] = packageInfo.firstInstallTime
+            map["update_timestamp"] = packageInfo.lastUpdateTime
+            // Add package size in bytes
+            val packageFile = File(app.publicSourceDir ?: app.sourceDir)
+            map["package_size"] = if (packageFile.exists()) packageFile.length() else 0L
+            map["apk_path"] = app.sourceDir
+            if (SDK_INT >= LOLLIPOP) map["split_source_dirs"] = app.splitSourceDirs?.toList()
+            map["app_uid"] = app.uid
+            map["data_dir"] = app.dataDir
             return map
         }
 
