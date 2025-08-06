@@ -14,6 +14,7 @@ class AppInfo {
   int appUid;
   String dataDir;
   List<dynamic> splitSourceDirs;
+  String installer;
 
   AppInfo({
     required this.name,
@@ -29,6 +30,7 @@ class AppInfo {
     required this.appUid,
     required this.dataDir,
     required this.splitSourceDirs,
+    required this.installer,
   });
 
   factory AppInfo.create(dynamic data) {
@@ -46,6 +48,7 @@ class AppInfo {
       appUid: data["app_uid"] ?? 0,
       dataDir: data["data_dir"] ?? "",
       splitSourceDirs: data["split_source_dirs"] ?? [],
+      installer: data["installer"] ?? "",
     );
   }
 

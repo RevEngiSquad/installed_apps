@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.P
 import android.os.Build.VERSION_CODES.LOLLIPOP
+import android.os.Build.VERSION_CODES.R
 import android.util.Log
 import com.android.apksig.ApkVerifier
 import java.io.File
@@ -21,6 +22,13 @@ class Util {
         ): HashMap<String, Any?> {
             val map = HashMap<String, Any?>()
             map["name"] = packageManager.getApplicationLabel(app)
+            if (SDK_INT >= R) {
+                map["installer"] =
+                    packageManager.getInstallSourceInfo(app.packageName).installingPackageName
+            } else {
+                map["installer"] =
+                    packageManager.getInstallerPackageName(app.packageName)
+            }
             map["package_name"] = app.packageName
             map["icon"] =
                 if (withIcon) DrawableUtil.drawableToByteArray(app.loadIcon(packageManager))
