@@ -3,25 +3,32 @@ package org.revengi.installed_apps
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-import android.content.pm.PackageManager
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+import android.util.Base64
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import android.widget.Toast.LENGTH_SHORT
 import com.android.apksig.ApkVerifier
-import org.revengi.installed_apps.Util.Companion.convertAppToMap
-import org.revengi.installed_apps.Util.Companion.getPackageManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
-import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import org.revengi.installed_apps.Util.Companion.convertAppToMap
+import org.revengi.installed_apps.Util.Companion.getPackageManager
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.security.NoSuchAlgorithmException
 import java.util.Locale.ENGLISH
+import java.util.zip.CRC32
+import java.security.cert.CertificateEncodingException;
+import java.util.Arrays
+
 
 class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
@@ -64,7 +71,12 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
                 Thread {
                     val apps: List<Map<String, Any?>> =
-                        getInstalledApps(includeSystemApps, withIcon, packageNamePrefix, PlatformType.fromString(platformTypeName))
+                        getInstalledApps(
+                            includeSystemApps,
+                            withIcon,
+                            packageNamePrefix,
+                            PlatformType.fromString(platformTypeName)
+                        )
                     result.success(apps)
                 }.start()
             }
@@ -114,6 +126,13 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                 }.start()
             }
 
+            "extractSignatureInfo" -> {
+                Thread {
+                    val apkPath = call.argument<String>("apk_path") ?: ""
+                    result.success(extractSignatureInfo(apkPath))
+                }.start()
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -135,7 +154,14 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                     packageNamePrefix.lowercase(ENGLISH)
                 )
             }
-        return installedApps.map { app -> convertAppToMap(packageManager, app, withIcon, platformType) }
+        return installedApps.map { app ->
+            convertAppToMap(
+                packageManager,
+                app,
+                withIcon,
+                platformType
+            )
+        }
     }
 
     private fun startApp(packageName: String?): Boolean {
@@ -212,7 +238,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     //  https://github.com/MuntashirAkon/AppManager/blob/bdb29362606d7bf668d7e9c088cd0f172ef8abab/app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java#L830
     private fun getSignatureSchemes(apkPath: String): List<String> {
         val verifier = ApkVerifier.Builder(File(apkPath)).build()
-        val result = verifier.verify()
+        val result: ApkVerifier.Result = verifier.verify()
         val schemes = mutableListOf<String>()
 
         if (result.isVerifiedUsingV1Scheme) schemes.add("V1")
@@ -222,6 +248,68 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         if (result.isVerifiedUsingV4Scheme) schemes.add("V4")
 
         return schemes
+    }
+
+    private fun extractSignatureInfo(apkPath: String): HashMap<String, Any?> {
+        val resultMap = HashMap<String, Any?>()
+        val digs = HashMap<String, String>()
+        val issuer = StringBuilder()
+        val algorithm = StringBuilder()
+        val createDate = StringBuilder()
+        val expireDate = StringBuilder()
+        var baseData: String? = null
+        var rawData: ByteArray? = null
+
+        try {
+            val verifier = ApkVerifier.Builder(File(apkPath)).build()
+            val result = verifier.verify()
+
+            resultMap["verified"] = result.isVerified
+            resultMap["errors"] = result.errors.map { it.toString() }
+            resultMap["warnings"] = result.warnings.map { it.toString() }
+
+            for (cert in result.signerCertificates) {
+                try {
+                    issuer.append(cert.issuerX500Principal.name)
+                    algorithm.append(cert.sigAlgName)
+                    createDate.append(cert.notBefore)
+                    expireDate.append(cert.notAfter)
+                    val digests = arrayOf("MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
+                    for (algo in digests) {
+                        val digest = try {
+                            MessageDigest.getInstance(algo).digest(cert.encoded)
+                        } catch (e: NoSuchAlgorithmException) {
+                            ByteArray(0)
+                        }
+                        val hex = digest.joinToString("") { "%02x".format(it) }
+                        digs[algo] = hex
+                    }
+                    val crc32 = CRC32().apply { update(cert.encoded) }.value
+                    val crcBytes =
+                        ByteArray(8) { i -> ((crc32 shr (8 * (7 - i))) and 0xFF).toByte() }
+                    val crcHex = crcBytes.joinToString("") { "%02x".format(it) }
+                    digs["CRC32"] = crcHex
+                    digs["HASH"] = Arrays.hashCode(cert.encoded).toString()
+                    baseData = Base64.encode(cert.encoded, Base64.DEFAULT).toString(StandardCharsets.UTF_8);
+                    rawData = cert.encoded
+                } catch (e: CertificateEncodingException) {
+                    e.printStackTrace()
+                }
+            }
+
+            resultMap["issuer"] = issuer.toString()
+            resultMap["algorithm"] = algorithm.toString()
+            resultMap["digests"] = digs
+            resultMap["schemes"] = getSignatureSchemes(apkPath)
+            resultMap["create_date"] = createDate.toString()
+            resultMap["expire_date"] = expireDate.toString()
+            resultMap["base64_data"] = baseData
+            resultMap["rawData"] = rawData
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return resultMap
     }
 
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:installed_apps/app_info.dart';
+import 'package:installed_apps/sign_info.dart';
 
 /// A utility class for interacting with installed apps on the device.
 class InstalledApps {
@@ -137,5 +138,18 @@ class InstalledApps {
       {"apk_path": apkPath},
     );
     return List<String>.from(schemes);
+  }
+
+  /// Extracts signature information from an APK file.
+  ///
+  /// [apkPath] is the path to the APK file.
+  ///
+  /// Returns a [SignInfo] object containing the extracted signature information.
+  static Future<SignInfo> extractSignatureInfo(String apkPath) async {
+    dynamic result = await _channel.invokeMethod(
+      "extractSignatureInfo",
+      {"apk_path": apkPath},
+    );
+    return SignInfo.fromMap(Map<String, dynamic>.from(result));
   }
 }
