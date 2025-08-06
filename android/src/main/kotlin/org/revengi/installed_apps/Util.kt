@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.os.Build.VERSION.SDK_INT
 import android.os.Build.VERSION_CODES.P
 import android.os.Build.VERSION_CODES.LOLLIPOP
+import android.util.Log
+import com.android.apksig.ApkVerifier
 import java.io.File
 
 class Util {

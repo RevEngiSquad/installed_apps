@@ -125,4 +125,17 @@ class InstalledApps {
       {"package_name": packageName},
     );
   }
+
+  /// Retrieves the signature schemes of an APK file.
+  ///
+  /// [apkPath] is the path to the APK file.
+  ///
+  /// Returns a list of signature schemes app is signed with.
+  static Future<List<String>> getSignatureSchemes(String apkPath) async {
+    dynamic schemes = await _channel.invokeMethod(
+      "getSignatureSchemes",
+      {"apk_path": apkPath},
+    );
+    return List<String>.from(schemes);
+  }
 }

@@ -50,6 +50,7 @@ android {
     }
 
     dependencies {
+        implementation 'com.android.tools.build:apksig:8.12.0'
     }
 
 }

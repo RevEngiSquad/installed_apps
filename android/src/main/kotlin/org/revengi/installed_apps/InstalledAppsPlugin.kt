@@ -10,6 +10,7 @@ import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import android.widget.Toast.LENGTH_SHORT
+import com.android.apksig.ApkVerifier
 import org.revengi.installed_apps.Util.Companion.convertAppToMap
 import org.revengi.installed_apps.Util.Companion.getPackageManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -19,6 +20,7 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
+import java.io.File
 import java.util.Locale.ENGLISH
 
 class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
@@ -103,6 +105,13 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             "isAppInstalled" -> {
                 val packageName = call.argument<String>("package_name") ?: ""
                 result.success(isAppInstalled(packageName))
+            }
+
+            "getSignatureSchemes" -> {
+                Thread {
+                    val apkPath = call.argument<String>("apk_path") ?: ""
+                    result.success(getSignatureSchemes(apkPath))
+                }.start()
             }
 
             else -> result.notImplemented()
@@ -198,6 +207,21 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         } catch (e: PackageManager.NameNotFoundException) {
             false
         }
+    }
+
+    //  https://github.com/MuntashirAkon/AppManager/blob/bdb29362606d7bf668d7e9c088cd0f172ef8abab/app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java#L830
+    private fun getSignatureSchemes(apkPath: String): List<String> {
+        val verifier = ApkVerifier.Builder(File(apkPath)).build()
+        val result = verifier.verify()
+        val schemes = mutableListOf<String>()
+
+        if (result.isVerifiedUsingV1Scheme) schemes.add("V1")
+        if (result.isVerifiedUsingV2Scheme) schemes.add("V2")
+        if (result.isVerifiedUsingV3Scheme) schemes.add("V3")
+        if (result.isVerifiedUsingV31Scheme) schemes.add("V3.1")
+        if (result.isVerifiedUsingV4Scheme) schemes.add("V4")
+
+        return schemes
     }
 
 }
