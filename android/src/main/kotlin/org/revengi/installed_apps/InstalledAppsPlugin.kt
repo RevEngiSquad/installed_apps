@@ -27,7 +27,10 @@ import java.security.NoSuchAlgorithmException
 import java.util.Locale.ENGLISH
 import java.util.zip.CRC32
 import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.util.Arrays
+import java.util.zip.ZipFile
 
 
 class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
@@ -261,6 +264,31 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         var rawData: ByteArray? = null
 
         try {
+            fun processCert(cert: X509Certificate) {
+                issuer.append(cert.issuerX500Principal.name)
+                algorithm.append(cert.sigAlgName)
+                createDate.append(cert.notBefore)
+                expireDate.append(cert.notAfter)
+
+                val digests = arrayOf("MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
+                for (algo in digests) {
+                    val digest = try {
+                        MessageDigest.getInstance(algo).digest(cert.encoded)
+                    } catch (e: NoSuchAlgorithmException) {
+                        ByteArray(0)
+                    }
+                    digs[algo] = digest.joinToString("") { "%02x".format(it) }
+                }
+
+                val crc32 = CRC32().apply { update(cert.encoded) }.value
+                val crcBytes = ByteArray(8) { i -> ((crc32 shr (8 * (7 - i))) and 0xFF).toByte() }
+                digs["CRC32"] = crcBytes.joinToString("") { "%02x".format(it) }
+                digs["HASH"] = Arrays.hashCode(cert.encoded).toString()
+                baseData = Base64.encode(cert.encoded, Base64.DEFAULT)
+                    .toString(StandardCharsets.UTF_8)
+                rawData = cert.encoded
+            }
+
             val verifier = ApkVerifier.Builder(File(apkPath)).build()
             val result = verifier.verify()
 
@@ -268,33 +296,28 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             resultMap["errors"] = result.errors.map { it.toString() }
             resultMap["warnings"] = result.warnings.map { it.toString() }
 
-            for (cert in result.signerCertificates) {
-                try {
-                    issuer.append(cert.issuerX500Principal.name)
-                    algorithm.append(cert.sigAlgName)
-                    createDate.append(cert.notBefore)
-                    expireDate.append(cert.notAfter)
-                    val digests = arrayOf("MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
-                    for (algo in digests) {
-                        val digest = try {
-                            MessageDigest.getInstance(algo).digest(cert.encoded)
-                        } catch (e: NoSuchAlgorithmException) {
-                            ByteArray(0)
+            if (result.signerCertificates.isEmpty()) {
+                val apkFile = File(apkPath)
+                if (apkFile.exists()) {
+                    ZipFile(apkFile).use { zip ->
+                        val entry = zip.entries().asSequence().find {
+                            it.name.startsWith("META-INF/") &&
+                                    (it.name.endsWith(".RSA", true) || it.name.endsWith(
+                                        ".DSA",
+                                        true
+                                    ))
                         }
-                        val hex = digest.joinToString("") { "%02x".format(it) }
-                        digs[algo] = hex
+                        if (entry != null) {
+                            zip.getInputStream(entry).use { certStream ->
+                                val cf = CertificateFactory.getInstance("X.509")
+                                val certs = cf.generateCertificates(certStream)
+                                (certs.firstOrNull() as? X509Certificate)?.let { processCert(it) }
+                            }
+                        }
                     }
-                    val crc32 = CRC32().apply { update(cert.encoded) }.value
-                    val crcBytes =
-                        ByteArray(8) { i -> ((crc32 shr (8 * (7 - i))) and 0xFF).toByte() }
-                    val crcHex = crcBytes.joinToString("") { "%02x".format(it) }
-                    digs["CRC32"] = crcHex
-                    digs["HASH"] = Arrays.hashCode(cert.encoded).toString()
-                    baseData = Base64.encode(cert.encoded, Base64.DEFAULT).toString(StandardCharsets.UTF_8);
-                    rawData = cert.encoded
-                } catch (e: CertificateEncodingException) {
-                    e.printStackTrace()
                 }
+            } else {
+                result.signerCertificates.forEach { processCert(it) }
             }
 
             resultMap["issuer"] = issuer.toString()
