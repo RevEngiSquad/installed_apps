@@ -3,6 +3,7 @@ class SignInfo {
   final bool verified;
   final Digests digests;
   final List<String> schemes;
+  final List<String> verifiedSchemes;
   final List<String> errors;
   final String issuer;
   final String algorithm;
@@ -16,6 +17,7 @@ class SignInfo {
     required this.verified,
     required this.digests,
     required this.schemes,
+    required this.verifiedSchemes,
     required this.errors,
     required this.issuer,
     required this.algorithm,
@@ -31,6 +33,7 @@ class SignInfo {
       verified: map['verified'] ?? false,
       digests: Digests.fromMap(Map<String, String>.from(map['digests'])),
       schemes: List<String>.from(map['schemes']),
+      verifiedSchemes: List<String>.from(map['verified_schemes']),
       errors: List<String>.from(map['errors']),
       issuer: map['issuer'] ?? "",
       algorithm: map['algorithm'] ?? "",

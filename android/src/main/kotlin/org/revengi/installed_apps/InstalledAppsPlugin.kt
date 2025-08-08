@@ -8,10 +8,19 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
 import android.util.Base64
+import android.util.Log
 import android.widget.Toast
 import android.widget.Toast.LENGTH_LONG
 import android.widget.Toast.LENGTH_SHORT
 import com.android.apksig.ApkVerifier
+import com.android.apksig.Constants.APK_SIGNATURE_SCHEME_V2_BLOCK_ID
+import com.android.apksig.Constants.APK_SIGNATURE_SCHEME_V31_BLOCK_ID
+import com.android.apksig.Constants.APK_SIGNATURE_SCHEME_V3_BLOCK_ID
+import com.android.apksig.apk.ApkUtils
+import com.android.apksig.internal.apk.ApkSigningBlockUtils
+import com.android.apksig.util.DataSource
+import com.android.apksig.util.DataSources
+import com.android.apksig.zip.ZipFormatException
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -21,13 +30,12 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import org.revengi.installed_apps.Util.Companion.convertAppToMap
 import org.revengi.installed_apps.Util.Companion.getPackageManager
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 import java.util.Locale.ENGLISH
 import java.util.zip.CRC32
-import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import java.util.Arrays
 import java.util.zip.ZipFile
@@ -122,10 +130,10 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                 result.success(isAppInstalled(packageName))
             }
 
-            "getSignatureSchemes" -> {
+            "getVerifiedSchemes" -> {
                 Thread {
                     val apkPath = call.argument<String>("apk_path") ?: ""
-                    result.success(getSignatureSchemes(apkPath))
+                    result.success(getVerifiedSchemes(apkPath))
                 }.start()
             }
 
@@ -239,7 +247,19 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     }
 
     //  https://github.com/MuntashirAkon/AppManager/blob/bdb29362606d7bf668d7e9c088cd0f172ef8abab/app/src/main/java/io/github/muntashirakon/AppManager/utils/PackageUtils.java#L830
-    private fun getSignatureSchemes(apkPath: String): List<String> {
+    private fun getVerifiedSchemes(result: ApkVerifier.Result): List<String> {
+        val schemes = mutableListOf<String>()
+
+        if (result.isVerifiedUsingV1Scheme) schemes.add("V1")
+        if (result.isVerifiedUsingV2Scheme) schemes.add("V2")
+        if (result.isVerifiedUsingV3Scheme) schemes.add("V3")
+        if (result.isVerifiedUsingV31Scheme) schemes.add("V3.1")
+        if (result.isVerifiedUsingV4Scheme) schemes.add("V4")
+
+        return schemes
+    }
+
+    private fun getVerifiedSchemes(apkPath: String): List<String> {
         val verifier = ApkVerifier.Builder(File(apkPath)).build()
         val result: ApkVerifier.Result = verifier.verify()
         val schemes = mutableListOf<String>()
@@ -253,6 +273,43 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         return schemes
     }
 
+    private fun getSignatureSchemes(
+        apkFile: File,
+        apk: DataSource,
+        zipSections: ApkUtils.ZipSections
+    ): List<String> {
+        val schemes = mutableListOf<String>()
+
+        try {
+            ZipFile(apkFile).use { zip ->
+                val hasV1 = zip.entries().asSequence().any {
+                    it.name.startsWith("META-INF/") &&
+                            (it.name.endsWith(".RSA") || it.name.endsWith(".DSA") || it.name.endsWith(".EC"))
+                }
+                if (hasV1) schemes.add("V1")
+            }
+        } catch (e: Exception) {
+            Log.w("SignatureCheck", "V1 check failed: ${e.message}")
+        }
+
+        // https://android.googlesource.com/platform/tools/apksig/+/refs/heads/main/src/main/java/com/android/apksig/internal/apk/v2/V2SchemeVerifier.java#101
+        fun checkScheme(version: Int, blockId: Int, label: String) {
+            try {
+                val result = ApkSigningBlockUtils.Result(version)
+                ApkSigningBlockUtils.findSignature(apk, zipSections, blockId, result)
+                schemes.add(label)
+            } catch (e: Exception) {
+                Log.w("SignatureCheck", "$label check failed: ${e.message}")
+            }
+        }
+
+        checkScheme(ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V2, APK_SIGNATURE_SCHEME_V2_BLOCK_ID, "V2")
+        checkScheme(ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V3, APK_SIGNATURE_SCHEME_V3_BLOCK_ID, "V3")
+        checkScheme(ApkSigningBlockUtils.VERSION_APK_SIGNATURE_SCHEME_V31, APK_SIGNATURE_SCHEME_V31_BLOCK_ID, "V3.1")
+
+        return schemes
+    }
+
     private fun extractSignatureInfo(apkPath: String): HashMap<String, Any?> {
         val resultMap = HashMap<String, Any?>()
         val digs = HashMap<String, String>()
@@ -262,6 +319,17 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         val expireDate = StringBuilder()
         var baseData: String? = null
         var rawData: ByteArray? = null
+
+        val f = RandomAccessFile(apkPath, "r")
+        val apk = DataSources.asDataSource(f, 0, f.length())
+        val zipSections = try {
+            ApkUtils.findZipSections(apk)
+        } catch (e: ZipFormatException) {
+            e.printStackTrace()
+            return resultMap
+        }
+
+        resultMap["schemes"] = getSignatureSchemes(File(apkPath), apk, zipSections)
 
         try {
             fun processCert(cert: X509Certificate) {
@@ -295,35 +363,22 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             resultMap["verified"] = result.isVerified
             resultMap["errors"] = result.errors.map { it.toString() }
             resultMap["warnings"] = result.warnings.map { it.toString() }
+            resultMap["verified_schemes"] = getVerifiedSchemes(result)
 
-            if (result.signerCertificates.isEmpty()) {
-                val apkFile = File(apkPath)
-                if (apkFile.exists()) {
-                    ZipFile(apkFile).use { zip ->
-                        val entry = zip.entries().asSequence().find {
-                            it.name.startsWith("META-INF/") &&
-                                    (it.name.endsWith(".RSA", true) || it.name.endsWith(
-                                        ".DSA",
-                                        true
-                                    ))
-                        }
-                        if (entry != null) {
-                            zip.getInputStream(entry).use { certStream ->
-                                val cf = CertificateFactory.getInstance("X.509")
-                                val certs = cf.generateCertificates(certStream)
-                                (certs.firstOrNull() as? X509Certificate)?.let { processCert(it) }
-                            }
-                        }
-                    }
-                }
-            } else {
-                result.signerCertificates.forEach { processCert(it) }
+            val signers = when {
+                result.signerCertificates.isNotEmpty() -> result.signerCertificates.map { it }
+                result.v1SchemeSigners.isNotEmpty() -> result.v1SchemeSigners.map { it.certificate }
+                result.v2SchemeSigners.isNotEmpty() -> result.v2SchemeSigners.map { it.certificate }
+                result.v3SchemeSigners.isNotEmpty() -> result.v3SchemeSigners.map { it.certificate }
+                result.v31SchemeSigners.isNotEmpty() -> result.v31SchemeSigners.map { it.certificate }
+                result.v4SchemeSigners.isNotEmpty() -> result.v4SchemeSigners.map { it.certificate }
+                else -> emptyList()
             }
 
+            signers.forEach { processCert(it) }
             resultMap["issuer"] = issuer.toString()
             resultMap["algorithm"] = algorithm.toString()
             resultMap["digests"] = digs
-            resultMap["schemes"] = getSignatureSchemes(apkPath)
             resultMap["create_date"] = createDate.toString()
             resultMap["expire_date"] = expireDate.toString()
             resultMap["base64_data"] = baseData
