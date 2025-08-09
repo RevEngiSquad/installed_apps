@@ -18,7 +18,6 @@ class Util {
             packageManager: PackageManager,
             app: ApplicationInfo,
             withIcon: Boolean,
-            platformType: PlatformType?,
         ): HashMap<String, Any?> {
             val map = HashMap<String, Any?>()
             map["name"] = packageManager.getApplicationLabel(app)
@@ -36,7 +35,6 @@ class Util {
             val packageInfo = packageManager.getPackageInfo(app.packageName, 0)
             map["version_name"] = packageInfo.versionName
             map["version_code"] = getVersionCode(packageInfo)
-            map["built_with"] = platformType?.value ?: BuiltWithUtil.getPlatform(app)
             map["installed_timestamp"] = packageInfo.firstInstallTime
             map["update_timestamp"] = packageInfo.lastUpdateTime
             // Add package size in bytes

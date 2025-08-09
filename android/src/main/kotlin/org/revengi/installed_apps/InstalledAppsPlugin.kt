@@ -80,7 +80,6 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                 val includeSystemApps = call.argument<Boolean>("exclude_system_apps") ?: true
                 val withIcon = call.argument<Boolean>("with_icon") ?: false
                 val packageNamePrefix = call.argument<String>("package_name_prefix") ?: ""
-                val platformTypeName = call.argument<String>("platform_type") ?: ""
 
                 Thread {
                     val apps: List<Map<String, Any?>> =
@@ -88,7 +87,6 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                             includeSystemApps,
                             withIcon,
                             packageNamePrefix,
-                            PlatformType.fromString(platformTypeName)
                         )
                     result.success(apps)
                 }.start()
@@ -112,9 +110,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
 
             "getAppInfo" -> {
                 val packageName = call.argument<String>("package_name") ?: ""
-                val platformTypeName = call.argument<String>("platform_type") ?: ""
-                val platformType = PlatformType.fromString(platformTypeName)
-                result.success(getAppInfo(getPackageManager(context!!), packageName, platformType))
+                result.success(getAppInfo(getPackageManager(context!!), packageName))
             }
 
             "isSystemApp" -> {
@@ -154,7 +150,6 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         excludeSystemApps: Boolean,
         withIcon: Boolean,
         packageNamePrefix: String,
-        platformType: PlatformType?
     ): List<Map<String, Any?>> {
         val packageManager = getPackageManager(context!!)
         var installedApps = packageManager.getInstalledApplications(0)
@@ -172,7 +167,6 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                 packageManager,
                 app,
                 withIcon,
-                platformType
             )
         }
     }
@@ -219,12 +213,11 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     private fun getAppInfo(
         packageManager: PackageManager,
         packageName: String,
-        platformType: PlatformType?
     ): Map<String, Any?>? {
         var installedApps = packageManager.getInstalledApplications(0)
         installedApps = installedApps.filter { app -> app.packageName == packageName }
         return if (installedApps.isEmpty()) null
-        else convertAppToMap(packageManager, installedApps[0], true, platformType)
+        else convertAppToMap(packageManager, installedApps[0], true)
     }
 
     private fun uninstallApp(packageName: String): Boolean {
