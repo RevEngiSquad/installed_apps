@@ -34,6 +34,8 @@ import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
+import java.security.cert.CertificateEncodingException
+import java.security.cert.CertificateFactory
 import java.util.Locale.ENGLISH
 import java.util.zip.CRC32
 import java.security.cert.X509Certificate
@@ -332,29 +334,55 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         resultMap["schemes"] = getSignatureSchemes(File(apkPath), apk, zipSections)
 
         try {
-            fun processCert(cert: X509Certificate) {
-                issuer.append(cert.issuerX500Principal.name)
-                algorithm.append(cert.sigAlgName)
-                createDate.append(cert.notBefore)
-                expireDate.append(cert.notAfter)
-
-                val digests = arrayOf("MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
-                for (algo in digests) {
-                    val digest = try {
-                        MessageDigest.getInstance(algo).digest(cert.encoded)
-                    } catch (e: NoSuchAlgorithmException) {
-                        ByteArray(0)
+            fun processCert(cert: X509Certificate?) {
+                if (cert == null) {
+                    val apkFile = File(apkPath)
+                    if (apkFile.exists()) {
+                        ZipFile(apkFile).use { zip ->
+                            val entry = zip.entries().asSequence().find {
+                                it.name.startsWith("META-INF/") &&
+                                        (it.name.endsWith(".RSA", true) || it.name.endsWith(
+                                            ".DSA",
+                                            true
+                                        ))
+                            }
+                            if (entry != null) {
+                                zip.getInputStream(entry).use { certStream ->
+                                    val cf = CertificateFactory.getInstance("X.509")
+                                    val certs = cf.generateCertificates(certStream)
+                                    (certs.firstOrNull() as? X509Certificate)?.let { processCert(it) }
+                                }
+                            }
+                        }
                     }
-                    digs[algo] = digest.joinToString("") { "%02x".format(it) }
+                    return
                 }
+                try {
+                    issuer.append(cert.issuerX500Principal.name)
+                    algorithm.append(cert.sigAlgName)
+                    createDate.append(cert.notBefore)
+                    expireDate.append(cert.notAfter)
 
-                val crc32 = CRC32().apply { update(cert.encoded) }.value
-                val crcBytes = ByteArray(8) { i -> ((crc32 shr (8 * (7 - i))) and 0xFF).toByte() }
-                digs["CRC32"] = crcBytes.joinToString("") { "%02x".format(it) }
-                digs["HASH"] = Arrays.hashCode(cert.encoded).toString()
-                baseData = Base64.encode(cert.encoded, Base64.DEFAULT)
-                    .toString(StandardCharsets.UTF_8)
-                rawData = cert.encoded
+                    val digests = arrayOf("MD5", "SHA-1", "SHA-256", "SHA-384", "SHA-512")
+                    for (algo in digests) {
+                        val digest = try {
+                            MessageDigest.getInstance(algo).digest(cert.encoded)
+                        } catch (e: NoSuchAlgorithmException) {
+                            ByteArray(0)
+                        }
+                        digs[algo] = digest.joinToString("") { "%02x".format(it) }
+                    }
+
+                    val crc32 = CRC32().apply { update(cert.encoded) }.value
+                    val crcBytes = ByteArray(8) { i -> ((crc32 shr (8 * (7 - i))) and 0xFF).toByte() }
+                    digs["CRC32"] = crcBytes.joinToString("") { "%02x".format(it) }
+                    digs["HASH"] = Arrays.hashCode(cert.encoded).toString()
+                    baseData = Base64.encode(cert.encoded, Base64.DEFAULT)
+                        .toString(StandardCharsets.UTF_8)
+                    rawData = cert.encoded
+                } catch (e: CertificateEncodingException) {
+                    e.printStackTrace()
+                }
             }
 
             val verifier = ApkVerifier.Builder(File(apkPath)).build()
