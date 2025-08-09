@@ -404,6 +404,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
             }
 
             signers.forEach { processCert(it) }
+
             resultMap["issuer"] = issuer.toString()
             resultMap["algorithm"] = algorithm.toString()
             resultMap["digests"] = digs
