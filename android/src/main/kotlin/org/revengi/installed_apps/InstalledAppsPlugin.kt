@@ -351,7 +351,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
                     return
                 }
                 try {
-                    issuer.append(cert.issuerX500Principal.name)
+                    issuer.append(cert.issuerDN)
                     algorithm.append(cert.sigAlgName)
                     createDate.append(cert.notBefore)
                     expireDate.append(cert.notAfter)
