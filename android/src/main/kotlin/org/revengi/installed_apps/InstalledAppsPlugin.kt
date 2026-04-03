@@ -77,14 +77,14 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         }
         when (call.method) {
             "getInstalledApps" -> {
-                val includeSystemApps = call.argument<Boolean>("exclude_system_apps") ?: true
+                val systemApps = call.argument<Boolean>("system_apps") ?: false
                 val withIcon = call.argument<Boolean>("with_icon") ?: false
                 val packageNamePrefix = call.argument<String>("package_name_prefix") ?: ""
 
                 Thread {
                     val apps: List<Map<String, Any?>> =
                         getInstalledApps(
-                            includeSystemApps,
+                            systemApps,
                             withIcon,
                             packageNamePrefix,
                         )
@@ -147,13 +147,16 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
     }
 
     private fun getInstalledApps(
-        excludeSystemApps: Boolean,
+        systemApps: Boolean,
         withIcon: Boolean,
         packageNamePrefix: String,
     ): List<Map<String, Any?>> {
         val packageManager = getPackageManager(context!!)
         var installedApps = packageManager.getInstalledApplications(0)
-        if (excludeSystemApps)
+        if (systemApps)
+            installedApps =
+                installedApps.filter { app -> (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0 }
+        else
             installedApps =
                 installedApps.filter { app -> (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
         if (packageNamePrefix.isNotEmpty())

@@ -23,11 +23,15 @@ possible.
 
 ``` dart
 List<AppInfo> apps = await InstalledApps.getInstalledApps(
-	bool excludeSystemApps,
+	bool systemApps,
 	bool withIcon,
 	String packageNamePrefix
 );
 ```
+
+- `systemApps`: If true, returns only system apps. If false (default), returns only user apps.
+- `withIcon`: Whether to include app icons.
+- `packageNamePrefix`: Filter apps with package names starting with a specific prefix.
 
 Use `packageNamePrefix` to filter apps with package names starting with a specific prefix.
 

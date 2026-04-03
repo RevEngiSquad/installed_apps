@@ -8,24 +8,22 @@ class InstalledApps {
 
   /// Retrieves a list of installed apps on the device.
   ///
-  /// [excludeSystemApps] specifies whether to exclude system apps from the list.
+  /// [systemApps] specifies whether to return system apps. If true, only system apps are returned.
+  /// If false (default), only user apps are returned.
   /// [withIcon] specifies whether to include app icons in the list.
   /// [packageNamePrefix] is an optional parameter to filter apps with package names starting with a specific prefix.
   ///
   /// Returns a list of [AppInfo] objects representing the installed apps.
   static Future<List<AppInfo>> getInstalledApps([
-    bool excludeSystemApps = true,
+    bool systemApps = false,
     bool withIcon = false,
     String packageNamePrefix = "",
   ]) async {
-    dynamic apps = await _channel.invokeMethod(
-      "getInstalledApps",
-      {
-        "exclude_system_apps": excludeSystemApps,
-        "with_icon": withIcon,
-        "package_name_prefix": packageNamePrefix,
-      },
-    );
+    dynamic apps = await _channel.invokeMethod("getInstalledApps", {
+      "system_apps": systemApps,
+      "with_icon": withIcon,
+      "package_name_prefix": packageNamePrefix,
+    });
     return AppInfo.parseList(apps);
   }
 
@@ -35,20 +33,14 @@ class InstalledApps {
   ///
   /// Returns a boolean indicating whether the operation was successful.
   static Future<bool?> startApp(String packageName) async {
-    return _channel.invokeMethod(
-      "startApp",
-      {"package_name": packageName},
-    );
+    return _channel.invokeMethod("startApp", {"package_name": packageName});
   }
 
   /// Opens the settings screen (App Info) of an app with the specified package name.
   ///
   /// [packageName] is the package name of the app whose settings screen should be opened.
   static openSettings(String packageName) {
-    _channel.invokeMethod(
-      "openSettings",
-      {"package_name": packageName},
-    );
+    _channel.invokeMethod("openSettings", {"package_name": packageName});
   }
 
   /// Displays a toast message on the device.
@@ -56,13 +48,10 @@ class InstalledApps {
   /// [message] is the message to display.
   /// [isShortLength] specifies whether the toast should be short or long in duration.
   static toast(String message, bool isShortLength) {
-    _channel.invokeMethod(
-      "toast",
-      {
-        "message": message,
-        "short_length": isShortLength,
-      },
-    );
+    _channel.invokeMethod("toast", {
+      "message": message,
+      "short_length": isShortLength,
+    });
   }
 
   /// Retrieves information about an app with the specified package name.
@@ -70,15 +59,10 @@ class InstalledApps {
   /// [packageName] is the package name of the app to retrieve information for.
   ///
   /// Returns [AppInfo] for the given package name, or null if not found.
-  static Future<AppInfo?> getAppInfo(
-    String packageName,
-  ) async {
-    var app = await _channel.invokeMethod(
-      "getAppInfo",
-      {
-        "package_name": packageName,
-      },
-    );
+  static Future<AppInfo?> getAppInfo(String packageName) async {
+    var app = await _channel.invokeMethod("getAppInfo", {
+      "package_name": packageName,
+    });
     if (app == null) {
       return null;
     } else {
@@ -92,10 +76,7 @@ class InstalledApps {
   ///
   /// Returns a boolean indicating whether the app is a system app.
   static Future<bool?> isSystemApp(String packageName) async {
-    return _channel.invokeMethod(
-      "isSystemApp",
-      {"package_name": packageName},
-    );
+    return _channel.invokeMethod("isSystemApp", {"package_name": packageName});
   }
 
   /// Uninstalls an app with the specified package name.
@@ -104,10 +85,7 @@ class InstalledApps {
   ///
   /// Returns a boolean indicating whether the uninstallation was successful.
   static Future<bool?> uninstallApp(String packageName) async {
-    return _channel.invokeMethod(
-      "uninstallApp",
-      {"package_name": packageName},
-    );
+    return _channel.invokeMethod("uninstallApp", {"package_name": packageName});
   }
 
   /// Checks if an app with the specified package name is installed on the device.
@@ -116,10 +94,9 @@ class InstalledApps {
   ///
   /// Returns a boolean indicating whether the app is installed.
   static Future<bool?> isAppInstalled(String packageName) async {
-    return _channel.invokeMethod(
-      "isAppInstalled",
-      {"package_name": packageName},
-    );
+    return _channel.invokeMethod("isAppInstalled", {
+      "package_name": packageName,
+    });
   }
 
   /// Retrieves the signature schemes of an APK file.
@@ -128,10 +105,9 @@ class InstalledApps {
   ///
   /// Returns a list of signature schemes app is signed with.
   static Future<List<String>> getSignatureSchemes(String apkPath) async {
-    dynamic schemes = await _channel.invokeMethod(
-      "getSignatureSchemes",
-      {"apk_path": apkPath},
-    );
+    dynamic schemes = await _channel.invokeMethod("getSignatureSchemes", {
+      "apk_path": apkPath,
+    });
     return List<String>.from(schemes);
   }
 
@@ -141,10 +117,9 @@ class InstalledApps {
   ///
   /// Returns a [SignInfo] object containing the extracted signature information.
   static Future<SignInfo> extractSignatureInfo(String apkPath) async {
-    dynamic result = await _channel.invokeMethod(
-      "extractSignatureInfo",
-      {"apk_path": apkPath},
-    );
+    dynamic result = await _channel.invokeMethod("extractSignatureInfo", {
+      "apk_path": apkPath,
+    });
     return SignInfo.fromMap(Map<String, dynamic>.from(result));
   }
 }

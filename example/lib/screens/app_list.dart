@@ -6,10 +6,7 @@ import 'package:installed_apps_example/screens/app_info.dart';
 class AppListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
+    return Scaffold(appBar: _buildAppBar(), body: _buildBody());
   }
 
   AppBar _buildAppBar() {
@@ -18,17 +15,15 @@ class AppListScreen extends StatelessWidget {
 
   Widget _buildBody() {
     return FutureBuilder<List<AppInfo>>(
-      future: InstalledApps.getInstalledApps(true, true),
-      builder: (
-        BuildContext buildContext,
-        AsyncSnapshot<List<AppInfo>> snapshot,
-      ) {
-        return snapshot.connectionState == ConnectionState.done
-            ? snapshot.hasData
-                ? _buildListView(snapshot.data ?? [])
-                : _buildError()
-            : _buildProgressIndicator();
-      },
+      future: InstalledApps.getInstalledApps(false, true),
+      builder:
+          (BuildContext buildContext, AsyncSnapshot<List<AppInfo>> snapshot) {
+            return snapshot.connectionState == ConnectionState.done
+                ? snapshot.hasData
+                      ? _buildListView(snapshot.data ?? [])
+                      : _buildError()
+                : _buildProgressIndicator();
+          },
     );
   }
 
