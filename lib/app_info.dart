@@ -15,7 +15,6 @@ class AppInfo {
   String dataDir;
   List<dynamic> splitSourceDirs;
   String installer;
-  bool systemApp;
 
   AppInfo({
     required this.name,
@@ -32,7 +31,6 @@ class AppInfo {
     required this.dataDir,
     required this.splitSourceDirs,
     required this.installer,
-    required this.systemApp,
   });
 
   factory AppInfo.create(dynamic data) {
@@ -51,7 +49,6 @@ class AppInfo {
       dataDir: data["data_dir"] ?? "",
       splitSourceDirs: data["split_source_dirs"] ?? [],
       installer: data["installer"] ?? "",
-      systemApp: data["system_app"] ?? false,
     );
   }
 
@@ -62,12 +59,10 @@ class AppInfo {
   static List<AppInfo> parseList(dynamic apps) {
     if (apps == null || apps is! List || apps.isEmpty) return [];
     final List<AppInfo> appInfoList = apps
-        .where(
-          (element) =>
-              element is Map &&
-              element.containsKey("name") &&
-              element.containsKey("package_name"),
-        )
+        .where((element) =>
+            element is Map &&
+            element.containsKey("name") &&
+            element.containsKey("package_name"))
         .map((app) => AppInfo.create(app))
         .toList();
     appInfoList.sort((a, b) => a.name.compareTo(b.name));
@@ -88,4 +83,10 @@ class AppInfo {
   }
 }
 
-enum BuiltWith { flutter, react_native, xamarin, ionic, native_or_others }
+enum BuiltWith {
+  flutter,
+  react_native,
+  xamarin,
+  ionic,
+  native_or_others,
+}

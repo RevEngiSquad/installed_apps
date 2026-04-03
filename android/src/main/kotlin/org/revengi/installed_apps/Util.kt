@@ -44,7 +44,6 @@ class Util {
             if (SDK_INT >= LOLLIPOP) map["split_source_dirs"] = app.splitSourceDirs?.toList()
             map["app_uid"] = app.uid
             map["data_dir"] = app.dataDir
-            map["system_app"] = (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0
             return map
         }
 
