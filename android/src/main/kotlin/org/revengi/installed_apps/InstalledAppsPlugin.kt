@@ -155,7 +155,7 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         var installedApps = packageManager.getInstalledApplications(0)
         if (excludeSystemApps)
             installedApps =
-                installedApps.filter { app -> !isSystemApp(packageManager, app.packageName) }
+                installedApps.filter { app -> (app.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
         if (packageNamePrefix.isNotEmpty())
             installedApps = installedApps.filter { app ->
                 app.packageName.startsWith(
@@ -214,10 +214,12 @@ class InstalledAppsPlugin : MethodCallHandler, FlutterPlugin, ActivityAware {
         packageManager: PackageManager,
         packageName: String,
     ): Map<String, Any?>? {
-        var installedApps = packageManager.getInstalledApplications(0)
-        installedApps = installedApps.filter { app -> app.packageName == packageName }
-        return if (installedApps.isEmpty()) null
-        else convertAppToMap(packageManager, installedApps[0], true)
+        return try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            convertAppToMap(packageManager, appInfo, true)
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
+        }
     }
 
     private fun uninstallApp(packageName: String): Boolean {
