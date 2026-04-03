@@ -48,6 +48,7 @@ class AppInfo {
   int versionCode;
   BuiltWith builtWith;
   int installedTimestamp;
+  bool systemApp;
 }
 ```
 
