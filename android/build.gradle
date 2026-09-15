@@ -2,15 +2,13 @@ group = "org.revengi.installed_apps"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "1.8.22"
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.1.4")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
+        classpath("com.android.tools.build:gradle:8.13.1")
     }
 }
 
@@ -22,22 +20,15 @@ allprojects {
 }
 
 apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
 
 android {
-    if (project.android.hasProperty("namespace")) {
-        namespace = "org.revengi.installed_apps"
-    }
+    namespace = "org.revengi.installed_apps"
 
-    compileSdk = 34
+    compileSdk = flutter.compileSdkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     sourceSets {
@@ -46,11 +37,16 @@ android {
     }
 
     defaultConfig {
-        minSdk = 16
+        minSdk = 21
     }
+}
 
-    dependencies {
-        implementation 'com.android.tools.build:apksig:8.12.0'
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
 
+dependencies {
+    implementation 'com.android.tools.build:apksig:8.12.0'
 }
